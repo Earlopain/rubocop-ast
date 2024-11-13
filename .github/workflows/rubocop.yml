@@ -16,23 +16,17 @@ concurrency:
 jobs:
   ast_specs:
     name: >-
-      ${{ matrix.title || 'Specs' }} | ${{ matrix.ruby }}
+      ${{ matrix.title }} | ${{ matrix.ruby }}
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 5
-    env:
-      # See https://github.com/tmm1/test-queue#environment-variables
-      TEST_QUEUE_WORKERS: 2
-      RUBOCOP_VERSION: none
-      JRUBY_OPTS: --dev # http://blog.headius.com/2019/09/jruby-startup-time-exploration.html
-      TRUFFLERUBYOPT: --engine.Mode=latency # optimize for short test suites
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu]
         ruby: [2.7, "3.0", 3.1, 3.2, 3.3, head]
-        coverage: [null]
-        modern: [null]
-        title: [null]
+        coverage: [false]
+        modern: [false]
+        title: [Specs]
         include:
           - { ruby: 2.7, os: ubuntu, coverage: true, title: "Coverage" }
           - { ruby: "3.0", os: ubuntu, modern: true, title: 'Specs "modern"' }
@@ -40,6 +34,12 @@ jobs:
           - { ruby: jruby-head, os: ubuntu }
           - { ruby: truffleruby, os: ubuntu }
           - { ruby: truffleruby-head, os: ubuntu }
+
+    env:
+      RUBOCOP_VERSION: none
+      JRUBY_OPTS: --dev # http://blog.headius.com/2019/09/jruby-startup-time-exploration.html
+      TRUFFLERUBYOPT: --engine.Mode=latency # optimize for short test suites
+      MODERNIZE: ${{ matrix.modern }}
 
     steps:
       - name: windows misc
@@ -54,26 +54,20 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-      - name: install dependencies
-        run: bundle install --jobs 3 --retry 3
-      - name: code coverage
+          bundler-cache: true
+      - name: spec
         if: matrix.coverage
         uses: paambaati/codeclimate-action@v9.0.0
         env:
           CC_TEST_REPORTER_ID: "758a8228862932dc8afa9144c4a5bc5dfe29c2f7dde1b7734175bad49ee310e7"
-          COVERAGE: "true"
+          COVERAGE: ${{ matrix.coverage == true && 'true' || 'false' }}
         with:
           coverageCommand: bundle exec rake spec
           debug: true
-      - name: set modernize mode
-        if: matrix.modern == true
-        run: echo 'MODERNIZE=true' >> $GITHUB_ENV
       - name: independence check
         if: matrix.os != 'windows'
         run: (! bundle exec rubocop -h 2> /dev/null) && echo 'RuboCop successfully *not* loaded for local tests'
-      - name: spec
-        if: "matrix.coverage != true && matrix.internal_investigation != true"
-        run: bundle exec rake spec
+
   prism:
     runs-on: ubuntu-latest
     name: Prism
