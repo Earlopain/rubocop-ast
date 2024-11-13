@@ -125,28 +125,19 @@ jobs:
         run: bundle exec rake generate
       - name: spec
         run: cd ../rubocop && bundle exec rake spec
+
   internal_investigation:
-    name: >-
-      Coding Style | ${{ matrix.ruby }}
-    runs-on: ${{ matrix.os }}-latest
+    name: Coding Style
+    runs-on: ubuntu-latest
     env:
-      # See https://github.com/tmm1/test-queue#environment-variables
-      TEST_QUEUE_WORKERS: 2
       RUBOCOP_VERSION: master
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu]
-        ruby: ["3.0"]
-        rubocop: [master]
     steps:
       - name: checkout
         uses: actions/checkout@v4
       - name: set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
-      - name: install dependencies
-        run: bundle install --jobs 3 --retry 3
+          ruby-version: ruby # Latest stable CRuby version
+          bundler-cache: true
       - name: internal investigation
         run: bundle exec rake generate internal_investigation
