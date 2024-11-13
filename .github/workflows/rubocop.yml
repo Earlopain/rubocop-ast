@@ -89,23 +89,22 @@ jobs:
         env:
           PARSER_ENGINE: parser_prism
         run: bundle exec rake prism_spec
+
   rubocop_specs:
     name: >-
       Main Gem Specs | RuboCop: ${{ matrix.rubocop }} | ${{ matrix.ruby }}
     runs-on: ${{ matrix.os }}-latest
-    env:
-      # See https://github.com/tmm1/test-queue#environment-variables
-      TEST_QUEUE_WORKERS: 2
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu]
         ruby: [2.7]
         rubocop: [master]
-        internal_investigation: [null]
         include:
           - { rubocop: master, ruby: "3.0", os: ubuntu }
           - { rubocop: "v1.61.0", ruby: "3.3", os: ubuntu }
+    env:
+      RUBOCOP_VERSION: ${{ matrix.rubocop }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -113,14 +112,11 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-      - name: setup env
-        run: echo 'RUBOCOP_VERSION=${{ matrix.rubocop }}' >> $GITHUB_ENV
+          bundler-cache: true
       - name: install rubocop from source for full specs
         run: git clone --branch ${{ matrix.rubocop }} https://github.com/rubocop/rubocop.git ../rubocop
       - name: install rubocop dependencies
         run: cd ../rubocop && bundle install --jobs 3 --retry 3
-      - name: install dependencies
-        run: bundle install --jobs 3 --retry 3
       - name: generate lexer and parser
         run: bundle exec rake generate
       - name: spec
